@@ -1,0 +1,10 @@
+client_id.json
+token.json
+__pycache__
+*.ipynb
+.ipynb_checkpoints/
+*.pyc
+
+Bike Mileage*
+Running Log*
+*.csv
