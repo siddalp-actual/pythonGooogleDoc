@@ -32,3 +32,6 @@ gdf = gdoc.toDataFrame(usecols = [0,1,2,4])
 
 primarySheet = gdf['Sheet One']
 ```
+
+## See Also
+My repository [dailyInfo](https://github.com/siddalp-actual/dailyInfo.git) which makes extensive uses of these layer classes. 
