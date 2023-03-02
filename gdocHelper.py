@@ -36,6 +36,14 @@ class GdocHelper(gdf.gdriveFile):
         obj.cacheFileInfo()
         obj.parseBodyContent()
 
+    def refresh(self):
+        '''
+        After an update operation, the local copy is stale, need to
+        force a re-cache from drive, and update the outline.
+        '''
+        self.cacheFileInfo(force = True)
+        self.parseBodyContent()
+
     def appendToDoc(self, text):
         appendRequest = {
             "insertText": {
@@ -49,18 +57,24 @@ class GdocHelper(gdf.gdriveFile):
         ).execute()
 
     def appendTextWithHeader(self, header, text):
-        startPos = self.docExtent + 1
+        '''
+        Inserts the text at the end of the current document
+        '''
+        self.insertTextWithHeader(header, text, self.docExtent + 1)
+
+    def insertTextWithHeader(self, header, text, startPos):
         insertLen = len(header)
-        textInsert1 = GdocHelper.buildAppendText("\n" + header + "\n*")
+        textInsert1 = GdocHelper.buildInsertText("\n" + header + "\n*", startPos)
         setInsert1Format = GdocHelper.buildStyleUpdate(
-            "HEADING_2", startPos, startPos + insertLen
+            "HEADING_2", startPos + 1, startPos + insertLen
         )
         setAdjunctNormal = GdocHelper.buildStyleUpdate(
-            "NORMAL_TEXT", startPos + insertLen, startPos + insertLen + 1
+            "NORMAL_TEXT", startPos + insertLen + 2, startPos + insertLen + 3
         )
-        textInsert2 = GdocHelper.buildAppendText(text)
+        # next insert jumps header, 2 newlines, and the '*' adjunct
+        textInsert2 = GdocHelper.buildInsertText(text, startPos + insertLen + 3)
         deleteAdjunct = GdocHelper.buildDeleteRange(
-            startPos + insertLen, startPos + insertLen + 1
+            startPos + insertLen + 2, startPos + insertLen + 3
         )
         operations = [
             textInsert1,
@@ -75,6 +89,7 @@ class GdocHelper(gdf.gdriveFile):
             .execute()
         )
         print(resp)
+        self.refresh()  # reload from drive and rebuild outline
 
     def deleteText(self, start, end):
         delOp = GdocHelper.buildDeleteRange(start, end)
@@ -84,10 +99,17 @@ class GdocHelper(gdf.gdriveFile):
             .execute()
         )
         print(resp)
+        self.refresh()  # reload from drive and rebuild outline
+
 
     @staticmethod
     def buildAppendText(stuff):
         rb = {"insertText": {"text": stuff, "endOfSegmentLocation": {"segmentId": ""}}}
+        return rb
+
+    @staticmethod
+    def buildInsertText(stuff, where):
+        rb = {"insertText": {"text": stuff, 'location': {'index': where } }}
         return rb
 
     @staticmethod
@@ -227,7 +249,7 @@ class DocumentOutline(object):
             if matchObj:
                 return (matchObj[0], i)
         print("date not found in headingsIndex")
-        raise Error
+        raise Exception('no date found in outline headings')
 
 
 def main(args):

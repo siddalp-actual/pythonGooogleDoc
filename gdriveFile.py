@@ -311,13 +311,15 @@ class gdriveFile:
             self.sheet_service = self.access.sheet_service
             self.docs_service = self.access.docs_service
 
-    def cacheFileInfo(self):
+    def cacheFileInfo(self, force=False):
         """
         pull down all sorts of useful info about the file
         in particular, we're after the title, number of sheets and their names
+
+        force: if true, then re-cache the file
         """
         # assert(self.isSpreadSheet is True)
-        if self.fileInfo:
+        if self.fileInfo and not force:
             return
         else:
             if self.isSpreadSheet:
