@@ -60,7 +60,7 @@ class GdocHelper(gdf.gdriveFile):
         '''
         Inserts the text at the end of the current document
         '''
-        self.insertTextWithHeader(header, text, self.docExtent + 1)
+        self.insertTextWithHeader(header, text, self.docExtent - 1)
 
     def insertTextWithHeader(self, header, text, startPos):
         insertLen = len(header)
