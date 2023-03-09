@@ -237,8 +237,8 @@ class DocumentOutline(object):
         assert s.isHeading
         self.headings.append(s)
         i = self.headings.index(s)
-        # i = s.startPos
-        self.headingsIndex[s.heading] = i
+        uniqueIndex = "{:s} @{:x}".format(s.heading, id(s))
+        self.headingsIndex[uniqueIndex] = i
         return i
 
     def findFirstDate(self, after=0):
