@@ -30,10 +30,10 @@ import apiclient.discovery
 import apiclient.http
 import pprint
 import pandas as pd
+import os.path
 
 
 class gdriveFile:
-
     GDOC_SHEET_MIMETYPE = "application/vnd.google-apps.spreadsheet"
     GDOC_DOC_MIMETYPE = "application/vnd.google-apps.document"
 
@@ -167,7 +167,9 @@ class gdriveFile:
         return valueRange
 
     @staticmethod
-    def createValueRange2d(colname: str, startrow: int, data, arrayOf, sheet):
+    def createValueRange2d(
+        colname: str, startrow: int, data, arrayOf, sheet
+    ):
         """
         Marshalls the start column, row and data into the form expected by googlesheet API
         2d data can be provided
@@ -209,7 +211,9 @@ class gdriveFile:
                         sheet,
                         colname,
                         startrow,
-                        gdriveFile.colnum_string(colnum + widthData - 1),
+                        gdriveFile.colnum_string(
+                            colnum + widthData - 1
+                        ),
                         startrow + lenData - 1,
                     )
                 }
@@ -238,7 +242,9 @@ class gdriveFile:
         """
         self.attribs = fileDict
         self.gdocId = self.attribs["id"]
-        self.isSpreadSheet = self.attribs["mimeType"][-11:] == "spreadsheet"
+        self.isSpreadSheet = (
+            self.attribs["mimeType"][-11:] == "spreadsheet"
+        )
         self.isDocument = self.attribs["mimeType"][-8:] == "document"
         self.fileInfo = None
         self.fileData = None
@@ -250,7 +256,9 @@ class gdriveFile:
         """
         classmethod allows alternate constructor
         """
-        assert docType[-11:] == "spreadsheet" or docType[-8:] == "document"
+        assert (
+            docType[-11:] == "spreadsheet" or docType[-8:] == "document"
+        )
         if fid[:4] == "http":
             print("found url:", fid)
             url = fid
@@ -330,7 +338,8 @@ class gdriveFile:
                 )
                 self.title = self.fileInfo["properties"]["title"]
                 self.sheets = [
-                    s["properties"]["title"] for s in self.fileInfo["sheets"]
+                    s["properties"]["title"]
+                    for s in self.fileInfo["sheets"]
                 ]
                 # set columnCount, rowCount
                 self.sheetMaxSize = [
@@ -348,6 +357,52 @@ class gdriveFile:
             else:
                 print("document is neither spreadsheet nor text doc")
                 raise valueError
+            self.versionInfo = self.getVersions()
+
+    def getVersions(self):
+        """
+        ask for information about the document versions
+        """
+        resp = (
+            self.access.drive_service.revisions()
+            .list(
+                fileId=self.gdocId,
+                fields="*",
+                pageSize=1000,
+            )
+            .execute()
+        )
+        return [
+            {
+                f: n[f]
+                for f in ["id", "modifiedTime", "lastModifyingUser"]
+            }
+            for n in resp["revisions"]
+        ]
+
+    def uploadNewFile(self, filename, mimetype="text/csv"):
+        """
+        replace the existing version of the text with the named file
+        """
+        assert os.path.isfile(filename)
+        fileData = apiclient.http.MediaFileUpload(
+            filename, mimetype=mimetype
+        )
+        fileMetaData = {
+            "properties": {
+                "revisionId": int(self.versionInfo[-1]["id"]) + 1
+            }
+        }
+        update = (
+            self.access.drive_service.files()
+            .update(
+                fileId=self.gdocId,
+                body=fileMetaData,
+                media_body=fileData,
+            )
+            .execute()
+        )
+        self.cacheFileInfo(force=True)
 
     def cacheFileData(self):
         """
@@ -518,7 +573,9 @@ class gdriveFile:
 
     def append5Rows(self, sheet, sheetIndex):
         # append at the end of the sheet
-        aP = self.sheetMaxSize[sheetIndex]["rowCount"]  # append position
+        aP = self.sheetMaxSize[sheetIndex][
+            "rowCount"
+        ]  # append position
         appendData = gdriveFile.createValueRange(
             "A",
             aP,
@@ -638,13 +695,19 @@ class gdriveFile:
         csvfile.writerows(rows)
 
     def export_csv(
-        self, service, docid, filename_template="%(title)s : %(sheet)s.csv"
+        self,
+        service,
+        docid,
+        filename_template="%(title)s : %(sheet)s.csv",
     ):
         if not self.isSpreadSheet:
             print("object is not a spreadsheet")
             raise (typeError)
         for (doc, sheet), rows in self.itersheets(service, docid):
-            filename = filename_template % {"title": doc, "sheet": sheet}
+            filename = filename_template % {
+                "title": doc,
+                "sheet": sheet,
+            }
             with open(filename, "w", newline="") as fd:
                 self.write_csv(fd, rows)
 
@@ -695,7 +758,10 @@ class gdriveAccess:
         # and another for the sheets API used for pulling out different tabs
         # and data
         self.sheet_service = apiclient.discovery.build(
-            "sheets", version="v4", credentials=creds, cache_discovery=False
+            "sheets",
+            version="v4",
+            credentials=creds,
+            cache_discovery=False,
         )
 
         self.docs_service = apiclient.discovery.build(
