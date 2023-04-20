@@ -42,6 +42,36 @@ class GSheetHelper(gdf.gdriveFile):
         obj.__class__ = cls
         obj.cacheFileInfo()
 
+    @classmethod
+    def newgdf(cls, access, title="newGdriveFile"):
+        """
+        Create a new sheet, share it, and access it
+        """
+        spreadsheetprops = {"properties": {"title": title}}
+
+        spreadsheet = (
+            access.sheet_service.spreadsheets()
+            .create(
+                body=spreadsheetprops,
+            )
+            .execute()
+        )
+        fid = spreadsheet["spreadsheetId"]
+
+        user_permission = {
+            "type": "user",
+            "role": "writer",
+            "emailAddress": "pete.siddall@gmail.com",
+        }
+        access.drive_service.permissions().create(
+            fileId=fid, body=user_permission, fields="id"
+        ).execute()
+
+        doc = cls({"id": fid, "mimeType": "spreadsheet"})
+        doc.cacheAccess(access)
+        doc.cacheFileInfo()
+        return doc
+
     def appendSheet(self, newSheetName):
         if newSheetName in self.sheets:
             print(f"appendSheet({newSheetName}) sheet already exists")

@@ -240,12 +240,13 @@ class gdriveFile:
         create a gdriveFile object based on attributes
         at least needs an 'id' for further operations
         """
+        DEF_MIME_TYPE = "application/octet-stream"
         self.attribs = fileDict
         self.gdocId = self.attribs["id"]
         self.isSpreadSheet = (
-            self.attribs["mimeType"][-11:] == "spreadsheet"
+            self.attribs.get("mimeType", DEF_MIME_TYPE)[-11:] == "spreadsheet"
         )
-        self.isDocument = self.attribs["mimeType"][-8:] == "document"
+        self.isDocument = self.attribs.get("mimeType", DEF_MIME_TYPE)[-8:] == "document"
         self.fileInfo = None
         self.fileData = None
         self.sheetDict = {}
@@ -279,18 +280,19 @@ class gdriveFile:
     @classmethod
     def newgdf(cls, access, title="newGdriveFile"):
         """
-        Create a new sheet, share it, and access it
+        Create a new file, share it, and access it
         """
-        spreadsheetprops = {"properties": {"title": title}}
+        fileprops = {"name": title,
+                    "originalFilename": "noname.yet"}
 
         spreadsheet = (
-            access.sheet_service.spreadsheets()
+            access.drive_service.files()
             .create(
-                body=spreadsheetprops,
+                body=fileprops,
             )
             .execute()
         )
-        fid = spreadsheet["spreadsheetId"]
+        fid = spreadsheet["id"]
 
         user_permission = {
             "type": "user",
@@ -301,7 +303,7 @@ class gdriveFile:
             fileId=fid, body=user_permission, fields="id"
         ).execute()
 
-        doc = cls({"id": fid, "mimeType": "spreadsheet"})
+        doc = cls({"id": fid, })
         doc.cacheAccess(access)
         doc.cacheFileInfo()
         return doc
@@ -355,8 +357,8 @@ class gdriveFile:
                 )
                 self.title = self.fileInfo["title"]
             else:
-                print("document is neither spreadsheet nor text doc")
-                raise valueError
+                pass
+
             self.versionInfo = self.getVersions()
 
     def getVersions(self):
@@ -388,9 +390,15 @@ class gdriveFile:
         fileData = apiclient.http.MediaFileUpload(
             filename, mimetype=mimetype
         )
+        current_version = self.versionInfo[-1]["id"]
+        try:
+            new_version = current_version + 1
+        except(ValueError, TypeError):
+            new_version = 1
+
         fileMetaData = {
             "properties": {
-                "revisionId": int(self.versionInfo[-1]["id"]) + 1
+                "revisionId": new_version
             }
         }
         update = (
