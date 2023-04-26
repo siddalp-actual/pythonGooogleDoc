@@ -244,9 +244,13 @@ class gdriveFile:
         self.attribs = fileDict
         self.gdocId = self.attribs["id"]
         self.isSpreadSheet = (
-            self.attribs.get("mimeType", DEF_MIME_TYPE)[-11:] == "spreadsheet"
+            self.attribs.get("mimeType", DEF_MIME_TYPE)[-11:]
+            == "spreadsheet"
         )
-        self.isDocument = self.attribs.get("mimeType", DEF_MIME_TYPE)[-8:] == "document"
+        self.isDocument = (
+            self.attribs.get("mimeType", DEF_MIME_TYPE)[-8:]
+            == "document"
+        )
         self.fileInfo = None
         self.fileData = None
         self.sheetDict = {}
@@ -282,8 +286,7 @@ class gdriveFile:
         """
         Create a new file, share it, and access it
         """
-        fileprops = {"name": title,
-                    "originalFilename": "noname.yet"}
+        fileprops = {"name": title, "originalFilename": "noname.yet"}
 
         spreadsheet = (
             access.drive_service.files()
@@ -303,7 +306,11 @@ class gdriveFile:
             fileId=fid, body=user_permission, fields="id"
         ).execute()
 
-        doc = cls({"id": fid, })
+        doc = cls(
+            {
+                "id": fid,
+            }
+        )
         doc.cacheAccess(access)
         doc.cacheFileInfo()
         return doc
@@ -357,7 +364,11 @@ class gdriveFile:
                 )
                 self.title = self.fileInfo["title"]
             else:
-                pass
+                self.fileInfo = (
+                    self.access.drive_service.files()
+                    .get(fileId=self.gdocId, fields="*")
+                    .execute()
+                )
 
             self.versionInfo = self.getVersions()
 
@@ -393,13 +404,11 @@ class gdriveFile:
         current_version = self.versionInfo[-1]["id"]
         try:
             new_version = current_version + 1
-        except(ValueError, TypeError):
+        except (ValueError, TypeError):
             new_version = 1
 
         fileMetaData = {
-            "properties": {
-                "revisionId": new_version
-            }
+            "properties": {"revisionId": new_version, "name": filename}
         }
         update = (
             self.access.drive_service.files()
@@ -775,6 +784,19 @@ class gdriveAccess:
         self.docs_service = apiclient.discovery.build(
             "docs", "v1", credentials=creds, cache_discovery=False
         )
+
+    def __enter__(self):
+        """
+        enable resource manager function:
+        with gdriveAccess() as access:
+        """
+        return self
+
+    def __exit__(self, *args):
+        """
+        enable resource manager function
+        """
+        pass
 
     def get_drive_service(self):
         return self.drive_service
