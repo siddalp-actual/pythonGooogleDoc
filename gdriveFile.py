@@ -366,7 +366,10 @@ class gdriveFile:
             else:
                 self.fileInfo = (
                     self.access.drive_service.files()
-                    .get(fileId=self.gdocId, fields="*")
+                    .get(
+                        fileId=self.gdocId,
+                        fields="originalFilename,fullFileExtension,fileExtension,mimeType,properties/*",
+                    )
                     .execute()
                 )
 
@@ -403,8 +406,9 @@ class gdriveFile:
         )
         current_version = self.versionInfo[-1]["id"]
         try:
-            new_version = current_version + 1
-        except (ValueError, TypeError):
+            # map stuff like '1.1' to the next integer
+            new_version = int(float(current_version) + 1)
+        except ValueError:
             new_version = 1
 
         fileMetaData = {
